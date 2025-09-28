@@ -1,9 +1,10 @@
+# .github/workflows/update.yml
 name: Ultra Block Config Update
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * *"   # каждый день в 03:00 UTC
+    - cron: "0 3 * * *"
 
 permissions:
   contents: write
@@ -15,21 +16,21 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Download blocklists and merge
+      - name: Create Shadowrocket config
         run: |
           mkdir -p lists
-          curl -sSL https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o lists/hosts.txt
-          curl -sSL https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt -o lists/adguard.txt
-          curl -sSL https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_2_English/filter.txt -o lists/adguard_en.txt
-          curl -sSL https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt -o lists/adaway.txt
-          curl -sSL https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt -o lists/nocoin.txt
+          curl -sSL https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o lists/hosts.txt || true
+          curl -sSL https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt -o lists/adguard.txt || true
 
-          echo "# Ultra AdBlock Config (auto-updated)" > adblock2025_ultra_opt.conf
-          echo "# Updated: $(date -u)" >> adblock2025_ultra_opt.conf
+          # Начало конфигурации Shadowrocket
+          echo "[General]" > adblock2025_ultra_opt.conf
+          echo "bypass-system = true" >> adblock2025_ultra_opt.conf
+          echo "skip-proxy = 127.0.0.1, localhost" >> adblock2025_ultra_opt.conf
           echo "" >> adblock2025_ultra_opt.conf
+          echo "[Rule]" >> adblock2025_ultra_opt.conf
 
-          # объединение всех списков
-          cat lists/*.txt | grep -v '^#' | sort -u >> adblock2025_ultra_opt.conf
+          # Объединяем блок-листы в формате DOMAIN
+          cat lists/*.txt | grep -v '^#' | grep -v '^$' | sort -u >> adblock2025_ultra_opt.conf
 
       - name: Commit changes
         run: |
@@ -39,5 +40,4 @@ jobs:
           git commit -m "Auto-update ultra blocklists $(date -u)" || echo "No changes"
 
       - name: Push changes
-        run: |
-          git push origin HEAD:main
+        run: git push origin HEAD:main
