@@ -1,0 +1,42 @@
+name: Ultra Block Config Update
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # запуск каждый день в 03:00 UTC
+  workflow_dispatch: # запуск вручную
+
+jobs:
+  update-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Download latest blocklists
+        run: |
+          curl -sf https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt -o adguard.txt
+          curl -sf https://filters.adtidy.org/extension/chromium/filters/11.txt -o adtidy.txt
+          curl -sf https://easylist.to/easylist/easylist.txt -o easylist.txt
+          curl -sf https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-android.txt -o antiad.txt
+          curl -sf https://big.oisd.nl/domainswild -o oisd.txt
+          curl -sf https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o stevenblack.txt
+          curl -sf https://raw.githubusercontent.com/cjx82630/cjxlist/master/cjxlist.txt -o cjxlist.txt
+          curl -sf https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/Filters/filter_others/filter_android.txt -o mobile.txt
+          curl -sf https://raw.githubusercontent.com/hagezi/dns-blocklists/main/ultimate.txt -o hagezi.txt
+          curl -sf https://big.oisd.nl/ -o oisd_full.txt
+          curl -sf https://block.energized.pro/bluGo/formats/domains.txt -o energized.txt
+          curl -sf https://o0.pages.dev/Pro/domains.txt -o onex.txt
+
+      - name: Merge into config
+        run: |
+          cp adblock2025_ultra_opt.conf new.conf
+          cat adguard.txt adtidy.txt easylist.txt antiad.txt oisd.txt stevenblack.txt cjxlist.txt mobile.txt hagezi.txt oisd_full.txt energized.txt onex.txt >> new.conf
+          mv new.conf adblock2025_ultra_opt.conf
+
+      - name: Commit & Push
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add adblock2025_ultra_opt.conf
+          git commit -m "Auto-update ultra blocklists"
+          git push
