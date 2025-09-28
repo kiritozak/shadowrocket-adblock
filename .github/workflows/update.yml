@@ -1,9 +1,9 @@
 name: Ultra Block Config Update
 
 on:
-  schedule:
-    - cron: "0 3 * * *" # запуск каждый день в 03:00 UTC
   workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"   # каждый день в 03:00 UTC
 
 permissions:
   contents: write
@@ -13,33 +13,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Download latest blocklists
+      - name: Download blocklists and merge
         run: |
-          curl -sf https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt -o adguard.txt || true
-          curl -sf https://filters.adtidy.org/extension/chromium/filters/11.txt -o adtidy.txt || true
-          curl -sf https://easylist.to/easylist/easylist.txt -o easylist.txt || true
-          curl -sf https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/master/anti-ad-android.txt -o antiad.txt || true
-          curl -sf https://big.oisd.nl/domainswild -o oisd.txt || true
-          curl -sf https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o stevenblack.txt || true
-          curl -sf https://raw.githubusercontent.com/cjx82630/cjxlist/master/cjxlist.txt -o cjxlist.txt || true
-          curl -sf https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/Filters/filter_others/filter_android.txt -o mobile.txt || true
-          curl -sf https://raw.githubusercontent.com/hagezi/dns-blocklists/main/ultimate.txt -o hagezi.txt || true
-          curl -sf https://big.oisd.nl/ -o oisd_full.txt || true
-          curl -sf https://block.energized.pro/bluGo/formats/domains.txt -o energized.txt || true
-          curl -sf https://o0.pages.dev/Pro/domains.txt -o onex.txt || true
+          mkdir -p lists
+          curl -sSL https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o lists/hosts.txt
+          curl -sSL https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/BaseFilter/sections/adservers.txt -o lists/adguard.txt
+          curl -sSL https://raw.githubusercontent.com/AdguardTeam/FiltersRegistry/master/filters/filter_2_English/filter.txt -o lists/adguard_en.txt
+          curl -sSL https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt -o lists/adaway.txt
+          curl -sSL https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt -o lists/nocoin.txt
 
-      - name: Merge into config
-        run: |
-          cp adblock2025_ultra_opt.conf new.conf
-          cat adguard.txt adtidy.txt easylist.txt antiad.txt oisd.txt stevenblack.txt cjxlist.txt mobile.txt hagezi.txt oisd_full.txt energized.txt onex.txt >> new.conf
-          mv new.conf adblock2025_ultra_opt.conf
+          echo "# Ultra AdBlock Config (auto-updated)" > adblock2025_ultra_opt.conf
+          echo "# Updated: $(date -u)" >> adblock2025_ultra_opt.conf
+          echo "" >> adblock2025_ultra_opt.conf
 
-      - name: Commit & Push
+          # объединение всех списков
+          cat lists/*.txt | grep -v '^#' | sort -u >> adblock2025_ultra_opt.conf
+
+      - name: Commit changes
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
+          git config --local user.email "actions@github.com"
+          git config --local user.name "github-actions[bot]"
           git add adblock2025_ultra_opt.conf
-          git commit -m "Auto-update ultra blocklists" || echo "No changes to commit"
-          git push
+          git commit -m "Auto-update ultra blocklists $(date -u)" || echo "No changes"
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
